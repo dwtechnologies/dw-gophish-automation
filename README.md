@@ -1,4 +1,4 @@
-# gophishautomation
+# dw-gophish-automation
 
 
 ## Table of contents
