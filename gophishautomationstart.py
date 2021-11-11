@@ -13,7 +13,7 @@ import random
 config = configparser.ConfigParser()
 config.read('gophish.ini')
 
-userpath = config['localpath']['userpath']
+userpath = config['localsys']['userpath']
 availabilityzone = config['aws']['availabilityzone']
 securitygroup = config['aws']['securitygroup']
 instanceid = config['aws']['instanceid']
@@ -23,6 +23,7 @@ campaigndays = config['gophish']['campaigndays']
 elb_remove_date_tag = config['gophish']['elb_remove_date_tag']
 gophishurl = config['gophish']['gophishurl']
 groupprefix = config['gophish']['groupprefix']
+
 
 client = boto3.client('elb')
 urllib3.disable_warnings()
@@ -43,12 +44,20 @@ class Time:
 def ret():
     return Time()
 
-time = ret() 
+time = ret()
+
+def count_files():
+    initial_count = 0
+    for path in os.listdir(userpath):
+        if os.path.isfile(os.path.join(userpath, path)):
+            initial_count += 1
+    return initial_count
+
 
 #Creates ELBs and returns ELB names
-def create_elbs(elbpref):
+def create_elbs(elbpref, initial_count):
     elbnames = []
-    for i in range(1, 6):
+    for i in range(1, int(initial_count)):
         elbname = elbpref + "-" + str(i)
         response = client.create_load_balancer(
             LoadBalancerName=elbname,
@@ -176,6 +185,7 @@ def create_campaign(sendby, sendnow, elbgodict,random_tmp, random_pg):
 
 #Main function
 def main():
+    numberoffiles = count_files()
     if not os.listdir(userpath) :
         print("No user groups found in specified directory")
         return False
@@ -184,7 +194,7 @@ def main():
     random_tmp = get_temp()
     random_pg = get_page()  
     gophishgroupname = convertcreate_group(files, groupprefix)
-    elboutput = create_elbs(elbprefix)
+    elboutput = create_elbs(elbprefix, numberoffiles)
     elbgodict = create_dict(gophishgroupname, elboutput)
     startcampagin = create_campaign(time.send_by, time.send_now, elbgodict, random_tmp, random_pg)
 main()
