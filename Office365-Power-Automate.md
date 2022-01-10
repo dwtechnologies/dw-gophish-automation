@@ -1,7 +1,8 @@
 # Introduction
 
-Here we will only briefly go through the steps that we are using aswell as an architectual overview due to the nature of medium articles. In our github repo we will present a more complete technical walkthrough on how to implement this. You can find this here
-
+We needed a way to catch the users that got phished and also an automated way to send reminders to these users.
+We have previously built some good concepts around Power Platform and using Sharepoint and Power Automate to handle policy reminders.
+Do not expect a complete how-to here. This is how we have done it and what you can use.
 
 ## Table of contents
 * [Architectual Overview](#architectual-overview)
@@ -10,33 +11,92 @@ Here we will only briefly go through the steps that we are using aswell as an ar
 
 
 # Architectual Overview
-<h3 align="center"><img src="images/diagram.png " alt="The architecture diagram" width="100%" height="100%"></h3>
+<img src="images/diagram.png " alt="The architecture diagram" width="100%" height="100%">
 
-# Description of steps when user gets phished
+#  The Sharepoint Lists
+To keep track of active users there are two lists involved
+<img src="images/sharepoint-list.png" >
+The list keeps track on 
+    Active users 
+    How many reminders the user have got so far
+    If they are on hold
+    If they have an active support ticket
+## Users archive
+The list keeps track of two things
+    If a user has been phished historically
+    How many times that user has been phished
 
-1. A user recieves a Phishing Email sent by our training program
-2. A user opens this email and fails to recognize that this is a phishing attempt and proceeds to click the link in that email
-3. A user fails to recognize that the site they are sent to is not part of our usual login sites and submits their credentials
-4. Gophish sends a webhook to Power Automatea. 
-   1. We validate that this is a valid Gophish message using aws lambda and return valid or invalidb. 
-   2. If valid we proceed to add the user to ongoing phishing training.c. 
-   3. We also check if user has been phished before, regardless, their archive “score” is increased by 1
-5. We send the initial phishing reminder both to teams and outlook. Which reminder is used depends on how many times a user has been phished. Recurring trapped users will get a different training form.
+# The Flows
+## Part one, the gophish webhook
+### Flow overview
 
-6. Here is an example of the teams message for the initial request to undergo training.
-<img src="images/you-got-phished.gif" alt="When you get phished and need to take a training" width="50%" height="50%">
-By selecting language you get further instructions
+<img src="images/flow-overview.png" alt="The flow overview" width="100%" height="100%">
 
+### Description
 
-The next reminder date for the user is set to one week in the future
+So a few things. We wanted to catch the phished users but also send kudos when users successfully identified a phishing email. For this purpose we decided to use the [Gophish webhook}(https://docs.getgophish.com/user-guide/documentation/webhooks).
 
-7. Every day we check for new reminders to be sent. With the users second reminder, their manager will get a copy of the notification.On the 4th reminder the managers manager is also informed. On the fifth reminder the user account is requested to be disabled by our support system Samanage using Azure automations.The support team informs the manager and then proceeds to disable the account.The manager must then contact support in order to unlock the account so that they can complete the training.
+As for validating the webhook we use a Custom Connector in Power Automate to send a request to an Lambda in AWS to verify the request (X-Gophish-Signature) using go. We could do this on Azure but since a lot of our infrastructure in general is in AWS this was the simplest solution for us. On our github you can find the Gophish lambda, aswell as a swagger template for the Custom Connector. 
 
- 8. (and 9) When a user completes the training the user is removed from the ongoing training list and any ongoing support ticket is updated to reflect this
- 
-# Description of steps when user identifies a phishing attempt
+If the signature is validated then we check that the user is not already in the active period (sometimes gophish send multiple requests for the same submitted data). If not we add the users to the Phishing Users list in Sharepoint and also update the Archive list depending on how many times they have been phished before. 
 
-1. A user recieves a Phishing Email
+As a final step of this flow we trigger a child flow to send the first reminder to the user
 
-2. A user correctly identifies the email to be a potential phishing attempt.4. A kudos message is sent back to the user. It looks like this
+For reference here is the Kudos card!<br />
 <img src="images/you-found-the-phish.gif" alt="When you spot the phish" width="50%" height="50%">
+
+## Part two, send phishing reminder notifications
+
+### Flow overview
+
+<img src="images/reminder-flow.png" alt="The reminder flow">
+
+### Description
+So this flow might seem a bit intimidating at first glance so let us break this down into three parts. Validation of the user, Reminders and last but not least the Samanage Integration
+
+Validation of User
+
+When we say validation of user. Since this involves disabling of accounts we do have a validator for some users should be noted. It also verifies if manager value can be retrieved (the highest one on the food chain have no manager after all).
+Users are also allowed to be put on hold (parental leave or similiar leave of abscence) which cancels the flow
+As a last part of this we also validate how many times the user have been phished, this is because we send two different types of quizzes depending on that number.
+
+Reminders
+
+We have a switch depending on how many reminders a user has got so far
+<img src="images/how-many-reminders.png" alt="The reminder flow">
+So this sends a teams notification using adaptive cards and also an email to the user.
+Editors Note: Please note that send email will always trigger due to the fact that a user can block the bot conversation and will result in errors
+
+Here is a card example of the first notification<br />
+<img src="images/you-got-phished.gif" alt="When you get phished and need to take a training" width="50%" height="50%">
+
+We have added an example card on our github that you can use if you need some inspiration
+
+Samanage integration
+
+Now I will only touch upon this but if the user has “failed” to complete the quiz / training within the given time, a support ticket to disable the user account is created. This is done using azure automations but could ofcourse be created in other ways.
+
+On our github you can see a powershell example of this and the integration with our AD.
+
+## Part three, The reccuring flows
+There are two daily reccuring flows. One that checks if it is time to send reminders and one that updates support tickets to verify if the user has yet to complete the training. Here I will only go through the reminder flow
+
+### Overview
+
+<img src="images/reccuring-flow.png" alt="The reccuring flow">
+
+### Description
+
+It is a very straight forward flow. If the users next reminder date is less or equal to todays date, then they should recieve a new reminder
+
+## Part four, Training completed
+
+### Overview
+
+<img src="images/training-completed.png" alt="The training completed flow">
+
+### Description
+
+Again a straight forward flow. Upon completing the requested training form the users are removed from the active users list. If there is a pending support ticket then this is updated with information that the user has completed the training.
+
+
