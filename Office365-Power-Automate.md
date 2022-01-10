@@ -24,7 +24,7 @@ Here we will only briefly go through the steps that we are using aswell as an ar
 5. We send the initial phishing reminder both to teams and outlook. Which reminder is used depends on how many times a user has been phished. Recurring trapped users will get a different training form.
 
 6. Here is an example of the teams message for the initial request to undergo training.
-<h3 align="center"><img src="you-got-phished.gif " alt="When you get phished and need to take a training width="100%" height="100%"></h3>
+<img src="images/you-got-phished.gif" alt="When you get phished and need to take a training" width="50%" height="50%">
 By selecting language you get further instructions
 
 
@@ -39,4 +39,4 @@ The next reminder date for the user is set to one week in the future
 1. A user recieves a Phishing Email
 
 2. A user correctly identifies the email to be a potential phishing attempt.4. A kudos message is sent back to the user. It looks like this
-<h3 align="center"><img src="you-found-the-phish.gif " alt="When you get phished and need to take a training width="100%" height="100%"></h3>
+<img src="images/you-found-the-phish.gif" alt="When you spot the phish" width="50%" height="50%">
