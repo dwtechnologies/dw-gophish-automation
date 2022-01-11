@@ -82,10 +82,13 @@ def date_check(formatted_id_dict, dateform):
     for key, value in formatted_id_dict.items():
         datenow = time.datenow
         enddate = value + time.delay
+        print("datenow" + str(datenow))
+        print("enddate" + str(enddate))
         if enddate <= datenow:
             end_campagin_id.append(key)
         else:
             return False
+    print(end_campagin_id)
     if not end_campagin_id:
         return False
     else:
@@ -149,6 +152,7 @@ def main():
     formatted_id_dict, dateform = get_campaginstatus(get_campagin)
     getelb = get_elb()
     get_date = date_check(formatted_id_dict, dateform)
+    print(get_date)
     if get_date == False:
         quit()
     else:
