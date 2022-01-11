@@ -1,0 +1,78 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Default title",
+    "description": "",
+    "version": "1.0"
+  },
+  "host": "<base host of your alb>",
+  "basePath": "/<path>",
+  "schemes": [
+    "https"
+  ],
+  "consumes": [],
+  "produces": [],
+  "paths": {
+    "/<extended path>": {
+      "post": {
+        "responses": {
+          "default": {
+            "description": "default",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "type": "string",
+                  "description": "status"
+                }
+              }
+            }
+          }
+        },
+        "summary": "ValidateGophishSig",
+        "description": "Validates the Gophish hash",
+        "operationId": "ValidateGophishSig",
+        "parameters": [
+          {
+            "name": "X-Gophish-Signature",
+            "in": "header",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "email": {
+                  "type": "string",
+                  "description": "email"
+                },
+                "time": {
+                  "type": "string",
+                  "description": "time"
+                },
+                "message": {
+                  "type": "string",
+                  "description": "message"
+                },
+                "details": {
+                  "type": "string",
+                  "description": "details"
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "definitions": {},
+  "parameters": {},
+  "responses": {},
+  "securityDefinitions": {},
+  "security": [],
+  "tags": []
+}
