@@ -11,7 +11,7 @@ import configparser
 #Import from config
 config = configparser.ConfigParser()
 config.read('gophish.ini')
-userpath = config['localpath']['userpath']
+userpath = config['localsys']['userpath']
 gophishapikey = config['gophish']['gophishapikey']
 availabilityzone = config['aws']['availabilityzone']
 securitygroup = config['aws']['securitygroup']
@@ -29,27 +29,16 @@ class Time:
         self.today = datetime.today().strftime('%Y-%m-%d')
         self.year = date.today().strftime('%Y')
         self.datenow = datetime.now()
-        self.date_today = self.d.date()
+        #XYself.date_today = self.d.date()
         self.today = datetime.today()
         self.delay = timedelta(days=int(delaydays))
-  
+
 # This function returns an object of Time
 def ret():
     return Time()
 
-time = ret() 
+time = ret()
 
-"""
-today = datetime.today().strftime('%Y-%m-%d')
-year = date.today().strftime('%Y')
-d = datetime.now()
-date_today = d.date()
-new_time = datetime.now().astimezone().replace(microsecond=0) + timedelta(hours=1)
-amount_days = timedelta(int(campaigndays))
-add_days = new_time + amount_days
-send_by = add_days.isoformat()
-delay = timedelta(days=int(delaydays))
-"""
 urllib3.disable_warnings()
 
 #Get Gophish Campagin ID
@@ -62,7 +51,7 @@ def get_campaginid():
         id_list.append(i['id'])
     return id_list
 
-#Get GoPhish Campagin status 
+#Get GoPhish Campagin status
 def get_campaginstatus(id_list):
     datelist = []
     dateform = []
@@ -87,24 +76,27 @@ def get_campaginstatus(id_list):
             break
     return formatted_id_dict, dateform
 
-#End Gophish campagin ID
-def end_campagin(formatted_id_dict, dateform):
+def date_check(formatted_id_dict, dateform):
     end_id = []
     end_campagin_id = []
     for key, value in formatted_id_dict.items():
-        enddate = time.datenow + time.delay
-        if enddate >= value:
+        datenow = time.datenow
+        enddate = value + time.delay
+        if enddate <= datenow:
             end_campagin_id.append(key)
-            continue  
         else:
             return False
     if not end_campagin_id:
         return False
     else:
-        for ending in end_campagin_id:
-            response = requests.get(gophishurl + '/api/campaigns/'+ str(ending)+'/complete', headers=headers, verify=False)
-            responsebody = response.content
-        return True
+        return end_campagin_id
+
+#End Gophish campagin ID
+def end_campagin(end_campagin_id):
+     for ending in end_campagin_id:
+     	response = requests.get(gophishurl + '/api/campaigns/'+ str(ending)+'/complete', headers=headers, verify=False)
+     	responsebody = response.content
+     return True
 
 #Get AWS ELB 
 def get_elb():
@@ -125,7 +117,7 @@ def remove_elb(dnsnames):
     if dnsnames == []:
         pass
     else:
-        client = boto3.client('elb')                            
+        client = boto3.client('elb')
         for elbs in dnsnames:
             response = client.delete_load_balancer(
             LoadBalancerName=
@@ -134,7 +126,7 @@ def remove_elb(dnsnames):
         if response['ResponseMetadata']['HTTPStatusCode'] == 200:
             return True
 
-#Remove Gophish usergroup    
+#Remove Gophish usergroup
 def remove_usergrp():
     groupidlst = []
     response = requests.get(config['gophish']['gophishurl'] + '/api/groups/', headers=headers, verify=False)
@@ -155,12 +147,14 @@ def remove_usergrp():
 def main():
     get_campagin = get_campaginid()
     formatted_id_dict, dateform = get_campaginstatus(get_campagin)
-    end_camp = end_campagin(formatted_id_dict, dateform)
     getelb = get_elb()
-    if end_camp == True:
+    get_date = date_check(formatted_id_dict, dateform)
+    if get_date == False:
+        quit()
+    else:
+        end_camp = end_campagin(get_date)
         rm_elb = remove_elb(getelb)
         if rm_elb == True:
             rm_grp = remove_usergrp()
-    else:
-        pass
+
 main()

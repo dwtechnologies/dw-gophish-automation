@@ -39,7 +39,7 @@ class Time:
         self.amount_days = timedelta(int(campaigndays))
         self.add_days = self.new_time + self.amount_days
         self.send_by = self.add_days.isoformat()
-  
+
 # This function returns an object of Time
 def ret():
     return Time()
@@ -57,7 +57,7 @@ def count_files():
 #Creates ELBs and returns ELB names
 def create_elbs(elbpref, initial_count):
     elbnames = []
-    for i in range(1, int(initial_count)):
+    for i in range(1, int(initial_count) + 1):
         elbname = elbpref + "-" + str(i)
         response = client.create_load_balancer(
             LoadBalancerName=elbname,
@@ -121,7 +121,6 @@ def convertcreate_group(files, groupprefix):
             responsebody = response.content
             gophishresp = json.loads(responsebody.decode('utf-8'))
             gophishgrpname.append(gophishresp['name'])
-            print(response)
     except KeyError:
         print("Error: Groups already exist") 
     return gophishgrpname
@@ -189,10 +188,10 @@ def main():
     if not os.listdir(userpath) :
         print("No user groups found in specified directory")
         return False
-    else:    
+    else:
         files = os.listdir(userpath)
     random_tmp = get_temp()
-    random_pg = get_page()  
+    random_pg = get_page()
     gophishgroupname = convertcreate_group(files, groupprefix)
     elboutput = create_elbs(elbprefix, numberoffiles)
     elbgodict = create_dict(gophishgroupname, elboutput)
