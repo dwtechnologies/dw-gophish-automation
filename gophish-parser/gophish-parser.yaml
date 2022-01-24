@@ -1,0 +1,91 @@
+Description: Reliability Lambda Gophish parser / validator
+Outputs:
+  LambdaArn:
+    Description: Lambda ARN
+    Value: !GetAtt LambdaFunction.Arn
+  TGArn:
+    Description: Target Group ARN
+    Value: !Ref LambdaTargetGroup
+Parameters:
+  FunctionName:
+    Default: gophish-parser
+    Description: Project name
+    Type: String
+Resources:
+  LambdaIAMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${FunctionName}-lambda-role
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service: 
+                - "lambda.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Path: "/"
+      Policies:
+        - PolicyName: !Sub ${FunctionName}-lambda-policy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  # Allow modify / creation of Logstreams/groups
+                  - "logs:DescribeLogGroups"
+                  - "logs:DescribeLogStreams"
+                  - "logs:CreateLogStream"
+                  - "logs:CreateLogGroup"
+                  - "logs:PutLogEvents"
+                Resource: "*"
+              - Effect: "Allow"
+                Action:
+                  # Allow decrypt of gophish secret
+                  - "ssm:GetParameter"
+                Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/<your ssm parameter>"
+                # If you want to use KMS for paramater encryption
+              - Effect: "Allow"
+                Action:
+                  # Allow decrypt of gophish secret
+                  - "kms:Decrypt"
+                Resource: "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/<your kms key id>"
+                Condition:
+                  StringEquals:
+                    kms:EncryptionContext:PARAMETER_ARN: "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/<your ssm parameter>"
+  LambdaLogGroup:
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${LambdaFunction}
+      RetentionInDays: 90
+    Type: AWS::Logs::LogGroup
+  LambdaFunction:
+    Properties:
+      CodeUri: ./src/main.zip
+      Description: "Gophish validator"
+      FunctionName: !Sub ${FunctionName}
+      Handler: main
+      MemorySize: 128
+      Policies:
+      - AWSLambdaBasicExecutionRole
+      Role: !GetAtt LambdaIAMRole.Arn
+      Runtime: go1.x
+      Timeout: 20
+    Type: AWS::Serverless::Function
+  ## If you want to attach this to a loadbalancer here is an example of how to create such a target group and Permission
+  LambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt LambdaFunction.Arn
+      Action: 'lambda:InvokeFunction'
+      Principal: elasticloadbalancing.amazonaws.com
+  LambdaTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckEnabled: false
+      Name: !Sub ${LambdaFunction}-tg
+      TargetType: lambda
+      Targets:
+      - Id: !GetAtt LambdaFunction.Arn
+Transform: AWS::Serverless-2016-10-31
